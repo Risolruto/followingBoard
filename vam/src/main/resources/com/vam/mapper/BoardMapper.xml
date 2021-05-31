@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vam.mapper.BoardMapper">
+
+	<!-- 게시판 등록 -->
+	<insert id="enroll">
+
+		insert into vam_board(bno,title, content, writer) values
+		(vam_bno_seq.nextval, #{title}, #{content}, #{writer})
+	</insert>
+
+	<!-- 게시판 목록 -->
+	<select id="getList" resultType="com.vam.model.BoardVO">
+
+		select * from vam_board
+
+	</select>
+
+	<select id="getPage" resultType="com.vam.model.BoardVO">
+
+		select * from vam_board where bno = #{bno}
+
+	</select>
+
+	<update id="modify">
+
+		update vam_board
+		set
+		title = #{title}, content = #{content}, updatedate = sysdate
+		where bno = #{bno}
+
+	</update>
+
+	<delete id="delete">
+		delete from vam_board
+		where bno=#{bno}
+	</delete>
+	
+	<!-- 검색 조건문 -->
+    <sql id="criteria">
+        <trim prefix="AND (" suffix=")" prefixOverrides="OR">
+            <foreach collection="typeArr" item="type">
+                <trim prefix="OR">
+                    <choose>
+                        <when test="type == 'T'.toString()">
+                            title like '%'||#{keyword}||'%' 
+                        </when>
+                        <when test="type == 'C'.toString()">
+                            content like '%'||#{keyword}||'%' 
+                        </when>
+                        <when test="type == 'W'.toString()">
+                            writer like '%'||#{keyword}||'%' 
+                        </when>
+                    </choose>
+                </trim>
+            </foreach>
+        </trim>
+    
+    </sql>
+	
+	<!-- 
+	게시물 목록(페이징) 
+	<select id="getListPaging" resultType="com.vam.model.BoardVO">
+    
+    <![CDATA[
+        
+        select bno, title, content, writer, regdate, updatedate
+        from(
+        	select 
+        		rownum  as rn, bno, title, content, writer, regdate, updatedate
+            from 
+            	vam_board where rownum <= #{pageNum} * #{amount}
+            )     
+        where rn > (#{pageNum} -1) * #{amount}
+    
+    ]]>
+
+	</select>
+	 -->
+
+	<select id="getListPaging" resultType="com.vam.model.BoardVO">
+    
+    <![CDATA[
+        
+        select bno, title, content, writer, regdate, updatedate
+        from(
+         	select /*+INDEX_DESC(vam_board pk_board) */ rownum  as rn, 
+         			bno, title, content, writer, regdate, updatedate
+            from vam_board where rownum <= #{pageNum} * #{amount} 
+    ]]>
+		<!-- <if test="keyword != null">
+			and title like '%'||#{keyword}||'%'
+		</if> -->
+		<if test="keyword != null">
+                    <include refid="criteria"></include> 
+        </if>
+		<!-- if태그 사용이유 -> 검색 조건 없이 화면을 이동함으로써 값이 없는 typeArr변수가 생성되고 
+		BoardMapper로 전달이 되는데 이로 인해 에러발생 방지용으로 작성 -->
+    
+    <![CDATA[
+             )
+        where rn > (#{pageNum} -1) * #{amount}
+    
+    ]]>
+
+	</select>
+
+
+
+	<select id="getTotal" resultType="int">
+		select count(*) from vam_board
+		<!-- <if test="keyword != null">
+			where title like '%'||#{keyword}||'%'
+		</if> -->
+		<if test="keyword != null">       
+            where bno > 0 <include refid="criteria"></include>       
+        </if>
+        <!-- bno>0은 의미없지만 include 태그에 의해 삽입된 쿼리문이 and() 형식이기 때문에 구문 오류를 방지 위해 작성 -->
+        		
+	</select>
+
+</mapper>
